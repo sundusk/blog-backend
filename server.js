@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');  // 引入 mongoose
 const Blog = require('./models/Blog'); // 引入博客模型
+const { marked } = require('marked');  // 使用新的方式导入 marked
 const app = express();
 
 // 允许跨域请求
@@ -47,13 +48,35 @@ app.post('/api/blog', async (req, res) => {
   }
 });
 
-// 获取所有博客文章
+// 获取所有博客文章（Markdown 转换为 HTML）
 app.get('/api/blogs', async (req, res) => {
   try {
     const blogs = await Blog.find();
-    res.json(blogs);
+    const blogsWithHTMLContent = blogs.map(blog => ({
+      ...blog.toObject(),
+      content: marked(blog.content)  // 使用 marked 将内容转换为 HTML
+    }));
+    res.json(blogsWithHTMLContent);
   } catch (error) {
     res.status(500).json({ error: '获取博客列表时出错' });
+  }
+});
+
+// 获取单个博客文章
+app.get('/api/blog/:id', async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) {
+      return res.status(404).json({ message: '博客未找到' });
+    }
+    const blogWithHTMLContent = {
+      ...blog.toObject(),
+      content: marked(blog.content)  // 使用 marked 将内容转换为 HTML
+    };
+    res.json(blogWithHTMLContent);
+  } catch (error) {
+    console.error('获取博客内容时出错:', error);
+    res.status(500).json({ error: '获取博客内容时出错' });
   }
 });
 
